@@ -2,7 +2,6 @@ import os
 import requests
 import time
 import hashlib
-import hmac
 import json
 import google.generativeai as genai
 
@@ -17,76 +16,68 @@ GEMINI_KEY = "AIzaSyDqg_ypcUYtM01Vrj0Bv1i1TnQkyMssJCI"
 genai.configure(api_key=GEMINI_KEY)
 model = genai.GenerativeModel('gemini-pro')
 
-def gerar_assinatura(path, body_string):
-    timestamp = int(time.time())
-    base_string = f"{SHOPEE_APP_ID}{path}{timestamp}{body_string}{SHOPEE_SECRET}"
-    sign = hmac.new(SHOPEE_SECRET.encode(), base_string.encode(), hashlib.sha256).hexdigest()
-    return timestamp, sign
-
 def buscar_e_postar():
     try:
+        # 1. Preparar a Chamada (Usando a URL de consulta de produtos)
+        timestamp = int(time.time())
         path = "/api/v1/offer/search"
+        
+        # O segredo está aqui: o corpo precisa ser exatamente o que a Shopee espera
+        body = {"keyword": "whey protein", "pageSize": 10}
+        body_str = json.dumps(body)
+        
+        # Gerar a assinatura SHA256 (O jeito que a Shopee gosta)
+        base_string = f"{SHOPEE_APP_ID}{timestamp}{body_str}{SHOPEE_SECRET}"
+        signature = hashlib.sha256(base_string.encode()).hexdigest()
+        
         url = f"https://open-api.affiliate.shopee.com.br{path}"
         
-        # BUSCA AMPLA PARA TESTE: Celular, Fone e Whey
-        body = {"keyword": "celular fone whey bluetooth", "pageSize": 10}
-        body_string = json.dumps(body)
-        
-        timestamp, sign = gerar_assinatura(path, body_string)
-        
-        headers_shopee = {
-            "Authorization": f"SHA256 {sign}",
-            "Timestamp": str(timestamp),
+        headers = {
             "AppID": str(SHOPEE_APP_ID),
+            "Timestamp": str(timestamp),
+            "Authorization": f"SHA256 {signature}",
             "Content-Type": "application/json"
         }
 
-        print("🔎 Buscando produtos variados na Shopee para teste...")
-        res_shopee = requests.post(url, headers=headers_shopee, data=body_string)
-        dados_shopee = res_shopee.json()
+        print("🔎 Buscando oferta de Afiliado na Shopee...")
+        res = requests.post(url, headers=headers, data=body_str)
+        dados = res.json()
 
-        # Verifica se a Shopee devolveu a lista de produtos
-        if 'data' in dados_shopee and 'list' in dados_shopee['data'] and len(dados_shopee['data']['list']) > 0:
-            produto = dados_shopee['data']['list'][0]
-            nome = produto.get('productName', 'Produto Sem Nome')
-            link = produto.get('offerLink', '')
+        if 'data' in dados and 'list' in dados['data'] and len(dados['data']['list']) > 0:
+            produto = dados['data']['list'][0]
+            nome = produto.get('productName', 'Produto')
+            # Esse link abaixo já é o seu link de rastreio de Afiliado
+            link_afiliado = produto.get('offerLink', '')
             
-            print(f"✅ Sucesso! Produto encontrado: {nome}")
-            print("🤖 Gemini criando o post de venda...")
+            print(f"✅ Produto encontrado! Gerando post para: {nome}")
 
-            prompt = f"Crie um post de oferta curto para WhatsApp sobre: {nome}. Use emojis e chame a atenção para o preço."
+            # 2. Criar o texto com a IA
+            prompt = f"Crie um post animado para WhatsApp sobre: {nome}. Use emojis de academia."
             response = model.generate_content(prompt)
             texto_venda = response.text
 
-            # Enviar para o Supabase
+            # 3. Salvar no Supabase
             headers_supa = {
                 "apikey": SUPABASE_KEY,
                 "Authorization": f"Bearer {SUPABASE_KEY}",
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal" # Instrução para o Supabase processar rápido
+                "Content-Type": "application/json"
             }
-
+            
             dados_supa = {
                 "titulo": nome,
                 "preco": "OFERTA",
-                "cupom": "PROMO",
-                "link": link, 
+                "cupom": "FITNESS",
+                "link": link_afiliado, 
                 "texto_ia": texto_venda
             }
             
-            print("📤 Enviando para o Banco de Dados...")
-            envio = requests.post(SUPABASE_URL, json=dados_supa, headers=headers_supa)
-            
-            if envio.status_code in [200, 201]:
-                print("🚀 TUDO OK! A oferta já está no Supabase!")
-            else:
-                print(f"❌ Erro ao salvar no Supabase: {envio.status_code} - {envio.text}")
+            requests.post(SUPABASE_URL, json=dados_supa, headers=headers_supa)
+            print(f"🚀 SUCESSO! Oferta postada com seu link de afiliado!")
         else:
-            print("❌ Shopee não encontrou produtos com essas palavras.")
-            print(f"Resposta da Shopee: {dados_shopee}")
+            print(f"❌ Erro da Shopee: {dados}")
 
     except Exception as e:
-        print(f"⚠️ Erro Geral: {str(e)}")
+        print(f"⚠️ Erro no robô: {str(e)}")
 
 if __name__ == "__main__":
     buscar_e_postar()
