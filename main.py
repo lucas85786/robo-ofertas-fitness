@@ -8,7 +8,7 @@ import google.generativeai as genai
 
 # --- CONFIGURAÇÕES DO LUCAS ---
 SHOPEE_APP_ID = 18331390798
-SHOPEE_SECRET = "GOTTQIK5CACIRDEAPSKQ57CKQWDYFCAD"
+SHOPEE_SECRET = "2KDGUEBFN66R3W5ZTVA3Y2BM7KBBHCGV"
 SUPABASE_URL = "https://oxiswtfwdgkmsnbxrlte.supabase.co/rest/v1/promocoes"
 SUPABASE_KEY = "sb_publishable_4DuwwJBZ7JouakUyLRYSMg_69uTblGu"
 GEMINI_KEY = "AIzaSyDqg_ypcUYtM01Vrj0Bv1i1TnQkyMssJCI"
