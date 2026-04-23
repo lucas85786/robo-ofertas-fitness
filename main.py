@@ -33,7 +33,7 @@ def buscar_produto():
     }
 
     print("🚀 Testando conexão com a Shopee...")
-    res = requests.post(f"https://open-api.affiliate.shopee.com.br{path}", headers=headers, data=body_str)
+    res = requests.post(f"https://open-api.affiliate.shopee.com{path}", headers=headers, data=body_str)
     
     print(f"Status: {res.status_code}")
     print(f"Resposta: {res.text}")
